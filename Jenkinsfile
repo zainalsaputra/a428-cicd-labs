@@ -1,4 +1,3 @@
-Kini, keseluruhan Jenkinsfile akan tampak seperti berikut.
 pipeline {
     agent {
         docker {
