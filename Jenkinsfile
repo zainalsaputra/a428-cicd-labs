@@ -1,27 +1,45 @@
-pipeline {
-    agent {
-        docker {
-            image 'node:16-buster-slim'
-            args '-p 3000:3000'
+node {
+    def nodeImage = 'node:16-buster-slim'
+    def dockerArgs = '-u root:root -p 3000:3000'
+
+    stage('Checkout') {
+        checkout scm
+    }
+
+    stage('Build') {
+        docker.image(nodeImage).inside(dockerArgs) {
+            sh 'npm install'
         }
     }
-    stages {
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
+
+    stage('Test') {
+        docker.image(nodeImage).inside(dockerArgs) {
+            sh './jenkins/scripts/test.sh'
         }
-        stage('Test') {
-            steps {
-                sh './jenkins/scripts/test.sh'
-            }
-        }
-        stage('Deploy') { 
-            steps {
-                sh './jenkins/scripts/deliver.sh' 
-                input message: 'Sudah selesai menggunakan React App? (Klik "Proceed" untuk mengakhiri)' 
-                sh './jenkins/scripts/kill.sh' 
-            }
-        }
+    }
+
+    stage('Archive Log') {
+        sh '''
+            cat > log.txt <<'EOF'
+            CI Pipeline Log Summary
+
+            Pipeline:
+            React App CI Pipeline
+
+            Stages:
+            - Checkout : SUCCESS
+            - Build    : SUCCESS
+            - Test     : SUCCESS
+
+            Build:
+            Dependencies were installed using npm install.
+
+            Test:
+            Test script was executed using ./jenkins/scripts/test.sh.
+
+            EOF
+                    '''
+
+        archiveArtifacts artifacts: 'log.txt', fingerprint: true
     }
 }
