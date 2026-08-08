@@ -85,6 +85,7 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (!('IntersectionObserver' in window)) return undefined;
     const observer = new IntersectionObserver((entries) => {
       const visible = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (visible) setActive(visible.target.id);
