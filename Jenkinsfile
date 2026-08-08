@@ -27,7 +27,7 @@ node {
             sh './jenkins/scripts/deliver.sh'
 
             sh '''
-                echo "React App is running at http://localhost:3000"
+                echo "React App is running at https://react-app.xenia-hospitality.id"
                 echo "Keeping application alive for 1 minute..."
                 sleep 60
                 echo "Stopping React App after 1 minute..."
