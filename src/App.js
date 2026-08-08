@@ -122,6 +122,7 @@ function App() {
       <div className="sidebar-footer">
         <div className="version"><span className="status-dot"/><div><small>Source snapshot</small><strong>Compose v2</strong></div><span className="version-pill">LIVE</span></div>
         <p>Single-host CI platform<br/>for Ubuntu & Docker.</p>
+        <a className="sidebar-credit" href="https://github.com/zainalsaputra" target="_blank" rel="noreferrer">Created by Zainal Saputra <Icon name="external" size={12}/></a>
       </div>
     </aside>
     {menuOpen && <div className="menu-scrim" onClick={() => setMenuOpen(false)}/>} 
@@ -130,7 +131,7 @@ function App() {
       <div className="topbar">
         <button className="search-trigger" onClick={() => setSearchOpen(true)}><Icon name="search" size={18}/><span>Search documentation</span><kbd>Ctrl K</kbd></button>
         <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme"><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18}/></button>
-        <a className="repo-link" href="https://docs.docker.com/compose/" target="_blank" rel="noreferrer">Docker Compose <Icon name="external" size={15}/></a>
+        <a className="repo-link" href="https://github.com/zainalsaputra/compose-stack" target="_blank" rel="noreferrer">View on GitHub <Icon name="external" size={15}/></a>
       </div>
 
       <section id="overview" className="hero section-wrap">
@@ -198,7 +199,10 @@ function App() {
         <div className="section-kicker">06 · Reference</div><div className="section-heading"><div><h2>Configuration at a glance.</h2><p>Core environment values from the repository template. Defaults remain overridable per host.</p></div></div>
         <div className="table-wrap"><table><thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead><tbody>{config.map(([key, value, purpose]) => <tr key={key}><td><code>{key}</code></td><td><code className={value === 'change-me' ? 'danger-value' : ''}>{value}</code></td><td>{purpose}</td></tr>)}</tbody></table></div>
         <div className="footer-cta"><div><span className="status-dot"/><small>READY TO OPERATE</small><h2>Keep the platform boring.<br/><em>Make the delivery remarkable.</em></h2></div><button className="primary" onClick={() => jump('overview')}>Back to top <span>↑</span></button></div>
-        <footer><span>Compose Stack · Operations Handbook</span><span>Source: <code>C:\Development\Courses\compose-stack</code></span></footer>
+        <footer>
+          <span>Compose Stack · Operations Handbook</span>
+          <span className="footer-links"><a href="https://github.com/zainalsaputra/compose-stack" target="_blank" rel="noreferrer">GitHub repository <Icon name="external" size={11}/></a><i/>Credit: <a href="https://github.com/zainalsaputra" target="_blank" rel="noreferrer">Zainal Saputra</a><i/>License © 2026 Zainal Saputra</span>
+        </footer>
       </section>
     </main>
 
