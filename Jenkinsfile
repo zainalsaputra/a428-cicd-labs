@@ -121,7 +121,7 @@ ${imageName}
                     -u DOCKER_TLS_VERIFY \
                     -u DOCKER_CERT_PATH \
                     DOCKER_HOST=unix:///var/run/docker.sock \
-                    /usr/local/bin/compose-stack-app-route register \
+                    bash /usr/local/bin/compose-stack-app-route register \
                         --host ${appDomain} \
                         --upstream ${appAlias}:${appPort}
 
