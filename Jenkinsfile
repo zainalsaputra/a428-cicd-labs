@@ -1,11 +1,11 @@
 node {
-    def nodeImage = 'node:16-buster-slim'
+    def nodeImage = 'node:20-bookworm-slim'
 
     // Application identity.
     def appName = 'react-app'
     def appContainer = 'react-app'
     def appAlias = 'react-app'
-    def appPort = '3000'
+    def appPort = '80'
 
     // Must match APP_DOMAIN_SUFFIX on compose-stack.
     def appDomain = 'react-app.apps.xenia-hospitality.id'
@@ -16,8 +16,8 @@ node {
     // Path of compose-stack on deployment server.
     def composeStackPath = '/opt/compose-stack'
 
-    // Configure this with the deployment server IP / hostname.
-    def deployHost = 'YOUR_DEPLOY_SERVER_IP'
+    // Deployment server.
+    def deployHost = '202.10.45.194'
 
     // Jenkins credentials.
     def deploySshCredential = 'xenia-deploy-ssh'
@@ -35,12 +35,7 @@ node {
             docker.image(nodeImage).inside('-u root:root') {
                 sh '''
                     set -e
-
-                    if [ -f package-lock.json ]; then
-                        npm ci
-                    else
-                        npm install
-                    fi
+                    npm ci
                 '''
             }
         }
@@ -60,35 +55,22 @@ node {
                 set -e
 
                 cat > Dockerfile.jenkins <<'EOF'
-                FROM node:16-buster-slim AS builder
+FROM node:20-bookworm-slim AS builder
 
-                WORKDIR /app
+WORKDIR /app
 
-                COPY package*.json ./
+COPY package*.json ./
+RUN npm ci
 
-                RUN if [ -f package-lock.json ]; then \
-                        npm ci; \
-                    else \
-                        npm install; \
-                    fi
+COPY . .
+RUN npm run build
 
-                COPY . .
+FROM nginx:stable-alpine
 
-                RUN npm run build
+COPY --from=builder /app/build /usr/share/nginx/html
 
-
-                FROM node:16-buster-slim
-
-                WORKDIR /app
-
-                RUN npm install -g serve
-
-                COPY --from=builder /app/build ./build
-
-                EXPOSE 3000
-
-                CMD ["serve", "-s", "build", "-l", "3000"]
-                EOF
+EXPOSE 80
+EOF
 
                 docker build \
                     -f Dockerfile.jenkins \
@@ -136,12 +118,16 @@ ${imageName}
                             \$SSH_USER@${deployHost} \
                             'gunzip | sudo docker load'
 
-
                     echo "Deploying ${appContainer}..."
 
                     ssh \$SSH_OPTIONS \
                         \$SSH_USER@${deployHost} <<'REMOTE_DEPLOY'
 set -e
+
+sudo docker network inspect ${ingressNetwork} >/dev/null 2>&1 || {
+    echo "Required Docker network '${ingressNetwork}' does not exist."
+    exit 1
+}
 
 sudo docker rm -f ${appContainer} 2>/dev/null || true
 
@@ -225,7 +211,7 @@ Stages:
 - Health Check    : SUCCESS
 
 Deployment:
-Application was deployed as a persistent Docker container.
+Application was deployed as a persistent Nginx container.
 The container joined ${ingressNetwork}.
 Nginx routing was registered through app-route.sh.
 
