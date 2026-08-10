@@ -7,21 +7,11 @@ node {
     def appAlias = 'react-app'
     def appPort = '80'
 
-    // Must match APP_DOMAIN_SUFFIX on compose-stack.
+    // Public hostname routed through Cloudflare Tunnel -> Nginx.
     def appDomain = 'react-app.info-siber.com'
 
-    // Docker network created by compose-stack.
+    // Docker network created by compose-stack on the same host.
     def ingressNetwork = 'compose-stack-app-ingress'
-
-    // Path of compose-stack on deployment server.
-    def composeStackPath = '/opt/compose-stack'
-
-    // Deployment server.
-    def deployHost = '202.10.45.194'
-
-    // Jenkins credentials.
-    def deploySshCredential = 'personal-deploy-ssh'
-    def knownHostsCredential = 'personal-deploy-known-hosts'
 
     // Immutable image name for each Jenkins build.
     def imageName = "${appName}:${env.BUILD_NUMBER}"
@@ -96,58 +86,47 @@ ${imageName}
         }
 
         stage('Deploy') {
-            withCredentials([
-                sshUserPrivateKey(
-                    credentialsId: deploySshCredential,
-                    keyFileVariable: 'SSH_KEY',
-                    usernameVariable: 'SSH_USER'
-                ),
-                file(
-                    credentialsId: knownHostsCredential,
-                    variable: 'KNOWN_HOSTS'
-                )
-            ]) {
-                sh """
-                    set -e
+            sh """
+                set -e
 
-                    SSH_OPTIONS="-i \$SSH_KEY \
-                        -o UserKnownHostsFile=\$KNOWN_HOSTS \
-                        -o StrictHostKeyChecking=yes"
+                host_docker() {
+                    env \
+                        -u DOCKER_HOST \
+                        -u DOCKER_TLS_VERIFY \
+                        -u DOCKER_CERT_PATH \
+                        docker --host unix:///var/run/docker.sock \"\$@\"
+                }
 
-                    echo "Transferring Docker image ${imageName}..."
+                echo "Checking access to the host Docker daemon..."
+                host_docker info >/dev/null
 
-                    docker save ${imageName} | \
-                        gzip | \
-                        ssh \$SSH_OPTIONS \
-                            \$SSH_USER@${deployHost} \
-                            'gunzip | sudo docker load'
+                echo "Checking ingress network ${ingressNetwork}..."
+                host_docker network inspect ${ingressNetwork} >/dev/null
 
-                    echo "Deploying ${appContainer}..."
+                echo "Loading ${imageName} from Jenkins DinD into the host Docker daemon..."
+                docker save ${imageName} | host_docker load
 
-                    ssh \$SSH_OPTIONS \
-                        \$SSH_USER@${deployHost} <<'REMOTE_DEPLOY'
-set -e
+                echo "Replacing ${appContainer} on the host Docker daemon..."
+                host_docker rm -f ${appContainer} >/dev/null 2>&1 || true
 
-sudo docker network inspect ${ingressNetwork} >/dev/null 2>&1 || {
-    echo "Required Docker network '${ingressNetwork}' does not exist."
-    exit 1
-}
+                host_docker run -d \
+                    --name ${appContainer} \
+                    --restart unless-stopped \
+                    --network ${ingressNetwork} \
+                    --network-alias ${appAlias} \
+                    ${imageName}
 
-sudo docker rm -f ${appContainer} 2>/dev/null || true
+                echo "Registering Nginx route ${appDomain} -> ${appAlias}:${appPort}..."
+                env \
+                    -u DOCKER_TLS_VERIFY \
+                    -u DOCKER_CERT_PATH \
+                    DOCKER_HOST=unix:///var/run/docker.sock \
+                    /usr/local/bin/compose-stack-app-route register \
+                        --host ${appDomain} \
+                        --upstream ${appAlias}:${appPort}
 
-sudo docker run -d \
-    --name ${appContainer} \
-    --restart unless-stopped \
-    --network ${ingressNetwork} \
-    --network-alias ${appAlias} \
-    ${imageName}
-
-sudo bash ${composeStackPath}/app-route.sh register \
-    --host ${appDomain} \
-    --upstream ${appAlias}:${appPort}
-REMOTE_DEPLOY
-                """
-            }
+                echo "Deployment completed."
+            """
         }
 
         stage('Health Check') {
@@ -215,9 +194,10 @@ Stages:
 - Health Check    : SUCCESS
 
 Deployment:
-Application was deployed as a persistent Nginx container.
+The application image was built inside Jenkins DinD, loaded into the Docker
+host on the same server, and started as a persistent Nginx container.
 The container joined ${ingressNetwork}.
-Nginx routing was registered through app-route.sh.
+Nginx routing was registered through compose-stack-app-route.
 
 Route:
 ${appDomain} -> http://${appAlias}:${appPort}
