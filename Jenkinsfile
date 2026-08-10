@@ -8,7 +8,7 @@ node {
     def appPort = '80'
 
     // Must match APP_DOMAIN_SUFFIX on compose-stack.
-    def appDomain = 'react-app.apps.xenia-hospitality.id'
+    def appDomain = 'react-app.info-siber.com'
 
     // Docker network created by compose-stack.
     def ingressNetwork = 'compose-stack-app-ingress'
@@ -20,8 +20,8 @@ node {
     def deployHost = '202.10.45.194'
 
     // Jenkins credentials.
-    def deploySshCredential = 'xenia-deploy-ssh'
-    def knownHostsCredential = 'xenia-deploy-known-hosts'
+    def deploySshCredential = 'personal-deploy-ssh'
+    def knownHostsCredential = 'personal-deploy-known-hosts'
 
     // Immutable image name for each Jenkins build.
     def imageName = "${appName}:${env.BUILD_NUMBER}"
