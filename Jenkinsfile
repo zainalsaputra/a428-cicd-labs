@@ -41,7 +41,7 @@ node {
         }
 
         stage('Test') {
-            docker.image(nodeImage).inside('-u root:root') {
+            docker.image(nodeImage).inside('-u root:root -e NODE_OPTIONS=--openssl-legacy-provider') {
                 sh '''
                     set -e
                     chmod +x ./jenkins/scripts/test.sh
@@ -63,6 +63,10 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# react-scripts 4 uses Webpack 4, which requires the OpenSSL legacy provider
+# when building on Node.js 17+ / OpenSSL 3.
+ENV NODE_OPTIONS=--openssl-legacy-provider
 RUN npm run build
 
 FROM nginx:stable-alpine
